@@ -13,11 +13,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type Dashboard struct {
-	Addr   string
 	Client string
+	Addr   string
 	Key    string
 }
 
@@ -39,6 +40,15 @@ type Repro struct {
 type Patch struct {
 	Title string
 	Diff  []byte
+}
+
+func New(client, addr, key string) (*Dashboard, error) {
+	dash := &Dashboard{
+		Client: client,
+		Addr:   addr,
+		Key:    key,
+	}
+	return dash, nil
 }
 
 func (dash *Dashboard) ReportCrash(crash *Crash) error {
@@ -89,4 +99,34 @@ func (dash *Dashboard) query(method string, req, reply interface{}) error {
 		}
 	}
 	return nil
+}
+
+// New dashboad.
+
+type Build struct {
+	ID     string
+	Repo   string
+	Branch string
+	Commit string
+	Config string
+	Time   time.Time
+}
+
+type Image struct {
+	ID       string // unqiue hash
+	BuildID  string // copied from Build.ID
+	File     string // GCS path
+	Compiler string // compiler identification
+	Commit   string // commit hash on which it was built
+	Config   string // actual config used to build
+}
+
+func (dash *Dashboard) BuilderPoll() ([]Build, error) {
+	var builds []Build
+	err := dash.query("builder_poll", nil, &builds)
+	return builds, err
+}
+
+func (dash *Dashboard) UploadImage(image *Image) error {
+	return dash.query("upload_image", image, nil)
 }

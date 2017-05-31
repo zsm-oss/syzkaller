@@ -1,0 +1,23 @@
+{{define "header"}}
+	<header id="topbar">
+		<table class="position_table">
+			<tr>
+				<td>
+					<h1><a href="/">syzkaller</a></h1>
+					<form method="post">
+						<select name="namespace" onchange="this.form.submit()">
+							{{range $n := $.Namespaces}}
+								<option value="{{$n}}" {{if eq $n $.Namespace}}selected{{end}}>{{$n}}</option>
+							{{end}}
+						</select>
+					</form>
+				</td>
+				<td class="search">
+					<a href="https://github.com/google/syzkaller/wiki/Found-Bugs" target="_blank">found bugs</a> |
+					<a href="https://groups.google.com/forum/#!forum/syzkaller" target="_blank">mailing list</a> |
+					<a href="https://github.com/google/syzkaller" target="_blank">github</a>
+				</td>
+			</tr>
+		</table>
+	</header>
+{{end}}

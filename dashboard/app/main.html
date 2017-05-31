@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+<head>
+	<title>Syzkaller Dashboard</title>
+	<link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+	{{template "header" .Header}}
+
+	<form method="post">
+		Config:
+		<p><textarea name="config" cols="80" rows="20" required>{{.Config}}</textarea></p>
+		<input type="submit" value="Update config" class="button"/>
+		<input type="hidden" name="action" value="update_config"/>
+	</form>
+</body>
+</html>
