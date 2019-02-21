@@ -3,5 +3,486 @@
 
 include <uapi/linux/btrfs.h>
 
-# TODO: add the ioctls
-_ = BTRFS_IOC_SNAP_CREATE, BTRFS_IOC_DEFRAG, BTRFS_IOC_RESIZE, BTRFS_IOC_SCAN_DEV, BTRFS_IOC_TRANS_START, BTRFS_IOC_TRANS_END, BTRFS_IOC_SYNC, BTRFS_IOC_CLONE, BTRFS_IOC_ADD_DEV, BTRFS_IOC_RM_DEV, BTRFS_IOC_BALANCE, BTRFS_IOC_CLONE_RANGE, BTRFS_IOC_SUBVOL_CREATE, BTRFS_IOC_SNAP_DESTROY, BTRFS_IOC_FILE_EXTENT_SAME
+# ioctl$FS_IOC_GETFLAGS(fd fd, cmd const[FS_IOC_GETFLAGS], arg ptr[out, int32])
+# ioctl$FS_IOC_SETFLAGS(fd fd, cmd const[FS_IOC_SETFLAGS], arg ptr[in, int32])
+# ioctl$FS_IOC_GETVERSION(fd fd, cmd const[FS_IOC_GETVERSION], arg ptr[out, int32])
+ioctl$BTRFS_IOC_SNAP_CREATE(fd fd, cmd const[BTRFS_IOC_SNAP_CREATE], arg ptr[in, btrfs_ioctl_vol_args])
+ioctl$BTRFS_IOC_SNAP_CREATE_V2(fd fd, cmd const[BTRFS_IOC_SNAP_CREATE_V2], arg ptr[in, btrfs_ioctl_vol_args_v2])
+ioctl$BTRFS_IOC_SUBVOL_CREATE(fd fd, cmd const[BTRFS_IOC_SUBVOL_CREATE], arg ptr[in, btrfs_ioctl_vol_args])
+ioctl$BTRFS_IOC_SUBVOL_CREATE_V2(fd fd, cmd const[BTRFS_IOC_SUBVOL_CREATE_V2], arg ptr[in, btrfs_ioctl_vol_args_v2])
+ioctl$BTRFS_IOC_SNAP_DESTROY(fd fd, cmd const[BTRFS_IOC_SNAP_DESTROY], arg ptr[in, btrfs_ioctl_vol_args])
+ioctl$BTRFS_IOC_SUBVOL_GETFLAGS(fd fd, cmd const[BTRFS_IOC_SUBVOL_GETFLAGS], arg ptr[out, int64])
+ioctl$BTRFS_IOC_SUBVOL_SETFLAGS(fd fd, cmd const[BTRFS_IOC_SUBVOL_SETFLAGS], arg ptr[in, int64])
+ioctl$BTRFS_IOC_DEFAULT_SUBVOL(fd fd, cmd const[BTRFS_IOC_DEFAULT_SUBVOL], arg ptr[in, int64])
+ioctl$BTRFS_IOC_DEFRAG(fd fd, cmd const[BTRFS_IOC_DEFRAG], arg const[0])
+ioctl$BTRFS_IOC_DEFRAG_RANGE(fd fd, cmd const[BTRFS_IOC_DEFRAG_RANGE], arg ptr[in, btrfs_ioctl_defrag_range_args])
+ioctl$BTRFS_IOC_RESIZE(fd fd, cmd const[BTRFS_IOC_RESIZE], arg ptr[in, btrfs_ioctl_vol_args])
+ioctl$BTRFS_IOC_ADD_DEV(fd fd, cmd const[BTRFS_IOC_ADD_DEV], arg ptr[in, btrfs_ioctl_vol_args])
+ioctl$BTRFS_IOC_RM_DEV(fd fd, cmd const[BTRFS_IOC_RM_DEV], arg ptr[in, btrfs_ioctl_vol_args])
+ioctl$BTRFS_IOC_RM_DEV_V2(fd fd, cmd const[BTRFS_IOC_RM_DEV_V2], arg ptr[in, btrfs_ioctl_vol_args_v2])
+ioctl$BTRFS_IOC_FS_INFO(fd fd, cmd const[BTRFS_IOC_FS_INFO], arg ptr[inout, btrfs_ioctl_fs_info_args])
+ioctl$BTRFS_IOC_DEV_INFO(fd fd, cmd const[BTRFS_IOC_DEV_INFO], arg ptr[inout, btrfs_ioctl_dev_info_args])
+ioctl$BTRFS_IOC_BALANCE(fd fd, cmd const[BTRFS_IOC_BALANCE], arg const[0])
+ioctl$BTRFS_IOC_TREE_SEARCH(fd fd, cmd const[BTRFS_IOC_TREE_SEARCH], arg ptr[inout, btrfs_ioctl_search_args])
+ioctl$BTRFS_IOC_TREE_SEARCH_V2(fd fd, cmd const[BTRFS_IOC_TREE_SEARCH_V2], arg ptr[inout, btrfs_ioctl_search_args_v2])
+ioctl$BTRFS_IOC_INO_LOOKUP(fd fd, cmd const[BTRFS_IOC_INO_LOOKUP], arg ptr[in, btrfs_ioctl_ino_lookup_args])
+ioctl$BTRFS_IOC_INO_PATHS(fd fd, cmd const[BTRFS_IOC_INO_PATHS], arg ptr[inout, btrfs_ioctl_ino_path_args])
+ioctl$BTRFS_IOC_LOGICAL_INO(fd fd, cmd const[BTRFS_IOC_LOGICAL_INO], arg ptr[inout, btrfs_ioctl_logical_ino_args])
+ioctl$BTRFS_IOC_LOGICAL_INO_V2(fd fd, cmd const[BTRFS_IOC_LOGICAL_INO_V2], arg ptr[inout, btrfs_ioctl_logical_ino_args])
+ioctl$BTRFS_IOC_SPACE_INFO(fd fd, cmd const[BTRFS_IOC_SPACE_INFO], arg ptr[in, btrfs_ioctl_space_args])
+ioctl$BTRFS_IOC_SYNC(fd fd, cmd const[BTRFS_IOC_SYNC], arg const[0])
+ioctl$BTRFS_IOC_START_SYNC(fd fd, cmd const[BTRFS_IOC_START_SYNC], arg ptr[out, int64])
+ioctl$BTRFS_IOC_WAIT_SYNC(fd fd, cmd const[BTRFS_IOC_WAIT_SYNC], arg ptr[in, int64])
+ioctl$BTRFS_IOC_SCRUB(fd fd, cmd const[BTRFS_IOC_SCRUB], arg ptr[inout, btrfs_ioctl_scrub_args])
+ioctl$BTRFS_IOC_SCRUB_CANCEL(fd fd, cmd const[BTRFS_IOC_SCRUB_CANCEL], arg const[0])
+ioctl$BTRFS_IOC_SCRUB_PROGRESS(fd fd, cmd const[BTRFS_IOC_SCRUB_PROGRESS], arg ptr[inout, btrfs_ioctl_scrub_args])
+ioctl$BTRFS_IOC_BALANCE_V2(fd fd, cmd const[BTRFS_IOC_BALANCE_V2], arg ptr[inout, btrfs_ioctl_balance_args])
+ioctl$BTRFS_IOC_BALANCE_CTL(fd fd, cmd const[BTRFS_IOC_BALANCE_CTL], arg flags[balance_ctl_options])
+ioctl$BTRFS_IOC_BALANCE_PROGRESS(fd fd, cmd const[BTRFS_IOC_BALANCE_PROGRESS], arg ptr[out, btrfs_ioctl_balance_args])
+ioctl$BTRFS_IOC_SET_RECEIVED_SUBVOL(fd fd, cmd const[BTRFS_IOC_SET_RECEIVED_SUBVOL], arg ptr[inout, btrfs_ioctl_received_subvol_args])
+# ioctl$BTRFS_IOC_SET_RECEIVED_SUBVOL_32(fd fd, cmd const[BTRFS_IOC_SET_RECEIVED_SUBVOL_32], arg ptr[inout, btrfs_ioctl_received_subvol_args_32])
+ioctl$BTRFS_IOC_SEND(fd fd, cmd const[BTRFS_IOC_SEND], arg ptr[in, btrfs_ioctl_send_args])
+ioctl$BTRFS_IOC_SEND_32(fd fd, cmd const[BTRFS_IOC_SEND], arg ptr[in, btrfs_ioctl_send_args])
+ioctl$BTRFS_IOC_GET_DEV_STATS(fd fd, cmd const[BTRFS_IOC_GET_DEV_STATS], arg ptr[inout, btrfs_ioctl_get_dev_stats])
+ioctl$BTRFS_IOC_QUOTA_CTL(fd fd, cmd const[BTRFS_IOC_QUOTA_CTL], arg ptr[in, btrfs_ioctl_quota_ctl_args])
+ioctl$BTRFS_IOC_QGROUP_ASSIGN(fd fd, cmd const[BTRFS_IOC_QGROUP_ASSIGN], arg ptr[in, btrfs_ioctl_qgroup_assign_args])
+ioctl$BTRFS_IOC_QGROUP_CREATE(fd fd, cmd const[BTRFS_IOC_QGROUP_CREATE], arg ptr[in, btrfs_ioctl_qgroup_create_args])
+ioctl$BTRFS_IOC_QGROUP_LIMIT(fd fd, cmd const[BTRFS_IOC_QGROUP_LIMIT], arg ptr[in, btrfs_ioctl_qgroup_limit_args])
+ioctl$BTRFS_IOC_QUOTA_RESCAN(fd fd, cmd const[BTRFS_IOC_QUOTA_RESCAN], arg ptr[in, btrfs_ioctl_quota_rescan_args])
+ioctl$BTRFS_IOC_QUOTA_RESCAN_STATUS(fd fd, cmd const[BTRFS_IOC_QUOTA_RESCAN_STATUS], arg ptr[in, btrfs_ioctl_quota_rescan_args])
+ioctl$BTRFS_IOC_QUOTA_RESCAN_WAIT(fd fd, cmd const[BTRFS_IOC_QUOTA_RESCAN_WAIT], arg const[0])
+ioctl$BTRFS_IOC_DEV_REPLACE(fd fd, cmd const[BTRFS_IOC_DEV_REPLACE], arg ptr[inout, btrfs_ioctl_dev_replace_args])
+ioctl$BTRFS_IOC_GET_FSLABEL(fd fd, cmd const[BTRFS_IOC_GET_FSLABEL], arg ptr[out, string])
+ioctl$BTRFS_IOC_SET_FSLABEL(fd fd, cmd const[BTRFS_IOC_SET_FSLABEL], arg ptr[in, string])
+ioctl$BTRFS_IOC_GET_SUPPORTED_FEATURES(fd fd, cmd const[BTRFS_IOC_GET_SUPPORTED_FEATURES], arg ptr[out, array[btrfs_ioctl_feature_flags, 3]])
+ioctl$BTRFS_IOC_GET_FEATURES(fd fd, cmd const[BTRFS_IOC_GET_FEATURES], arg ptr[out, btrfs_ioctl_feature_flags])
+ioctl$BTRFS_IOC_SET_FEATURES(fd fd, cmd const[BTRFS_IOC_SET_FEATURES], arg ptr[in, array[btrfs_ioctl_feature_flags, 2]])
+# ioctl$FS_IOC_FSGETXATTR(fd fd, cmd const[FS_IOC_FSGETXATTR], arg ptr[out, fsxattr])
+# ioctl$FS_IOC_FSSETXATTR(fd fd, cmd const[FS_IOC_FSSETXATTR], arg ptr[in, fsxattr])
+ioctl$BTRFS_IOC_GET_SUBVOL_INFO(fd fd, cmd const[BTRFS_IOC_GET_SUBVOL_INFO], arg ptr[out, btrfs_ioctl_get_subvol_info_args])
+ioctl$BTRFS_IOC_GET_SUBVOL_ROOTREF(fd fd, cmd const[BTRFS_IOC_GET_SUBVOL_ROOTREF], arg ptr[inout, btrfs_ioctl_get_subvol_rootref_args])
+ioctl$BTRFS_IOC_INO_LOOKUP_USER(fd fd, cmd const[BTRFS_IOC_INO_LOOKUP_USER], arg ptr[inout, btrfs_ioctl_ino_lookup_user_args])
+
+# Checked
+btrfs_ioctl_vol_args {
+	fd	int64
+	name	array[int8, 4088]
+}
+
+# checked
+btrfs_ioctl_vol_args_v2 {
+	fd	int64
+	transid	int64
+	flags	int64
+	union_1	vol_args_v2_u1
+	union_2	vol_args_v2_u2
+}
+
+# checked
+vol_args_v2_u1 [
+	struct_1	vol_args_v2_u1_s1
+	unused		array[const[0, int64], 4]
+]
+
+# checked
+vol_args_v2_u1_s1 {
+	size				int64
+	btrfs_qgroup_inherit_ptr	ptr[in, btrfs_qgroup_inherit]
+}
+
+# checked
+btrfs_qgroup_inherit {
+	flags		int64
+	num_qgroups	int64
+	num_ref_copies	int64
+	num_excl_copies	int64
+	lim		btrfs_qgroup_limit
+	qgroups		array[int64]
+}
+
+# checked
+btrfs_qgroup_limit {
+	flags		int64
+	max_rfer	int64
+	max_excl	int64
+	rsv_rfer	int64
+	rsv_excl	int64
+}
+
+# checked
+vol_args_v2_u2 [
+	name	array[int8, 4039]
+	devid	int64
+]
+
+# checked
+btrfs_ioctl_defrag_range_args {
+	start		int64
+	len		int64
+	flags		int64
+	extent_thresh	int32
+	compress_type	int32
+	unused		array[const[0, int32], 4]
+}
+
+# checked
+btrfs_ioctl_fs_info_args {
+	max_id		int32
+	num_devices	int32
+	fsid		array[int8, 16]
+	nodesize	int32
+	sectorsize	int32
+	clone_alignment	int32
+	reserved32	int32
+	reserved	array[int64, 122]
+}
+
+# checked
+btrfs_ioctl_dev_info_args {
+	devid		int64
+	uuid		array[int8, 16]
+	bytes_used	int64
+	total_bytes	int64
+	unused		array[const[0, int64], 379]
+	path		array[int8, 1024]
+}
+
+# checked
+#TODO: dont mutate buffer, it is used for out
+#TODO: btrfs_ioctl_tree_search seems to have an erroneous "buf_size = sizeof(uargs->buf);" where uargs is a pointer to userspace
+btrfs_ioctl_search_args {
+	key	btrfs_ioctl_search_key
+	buf	array[int8, 3992]
+}
+
+# checked
+# TODO: dont mutate buf_size/buf
+btrfs_ioctl_search_args_v2 {
+	key		btrfs_ioctl_search_key
+	buf_size	int64
+	buf		array[int64]
+}
+
+# nr_items is inout
+btrfs_ioctl_search_key {
+	tree_id		int64
+	min_objectid	int64
+	max_objectid	int64
+	min_offset	int64
+	max_offset	int64
+	min_transid	int64
+	max_transid	int64
+	min_type	int32
+	max_type	int32
+	nr_items	int32
+	unused		const[0, int32]
+	unused1		const[0, int64]
+	unused2		const[0, int64]
+	unused3		const[0, int64]
+	unused4		const[0, int64]
+}
+
+# checked
+btrfs_ioctl_ino_lookup_args {
+	treeid		int64
+	objectid	int64
+	name		array[int8, 4080]
+}
+
+# can all the reserved be zerod out consts
+btrfs_ioctl_ino_path_args {
+	inum		int64
+	size		int64
+	reserved	array[int64, 4]
+	fspath		int64
+}
+
+# checked
+# Note that there is a commented out field "struct btrfs_data_container	*inodes;"
+# inodes is out?
+btrfs_ioctl_logical_ino_args {
+	logical		int64
+	size		int64
+	reserved	array[const[0, int64], 3]
+	flags		int64
+	inodes		int64
+}
+
+# checked
+btrfs_ioctl_space_args {
+	space_slots	int64
+	total_spaces	int64
+	spaces		array[btrfs_ioctl_space_info]
+}
+
+# checked
+btrfs_ioctl_space_info {
+	flags		int64
+	total_bytes	int64
+	used_bytes	int64
+}
+
+# checked
+# sizeof(btrfs_scrub_progress) = (15*8) = 120
+# sizeof(unused) = (1024-32-sizeof(struct btrfs_scrub_progress))/8 = 109
+# TODO: Mark progress as out?
+btrfs_ioctl_scrub_args {
+	devid		int64
+	start		int64
+	end		int64
+	flags		int64
+	progress	btrfs_scrub_progress
+	unused		array[const[0, int64], 109]
+}
+
+# checked
+btrfs_scrub_progress {
+	data_extents_scrubbed	int64
+	tree_extents_scrubbed	int64
+	data_bytes_scrubbed	int64
+	tree_bytes_scrubbed	int64
+	read_errors		int64
+	csum_errors		int64
+	verify_errors		int64
+	no_csum			int64
+	csum_discards		int64
+	super_errors		int64
+	malloc_errors		int64
+	uncorrectable_errors	int64
+	corrected_errors	int64
+	last_physical		int64
+	unverified_errors	int64
+}
+
+# stat and state are out only
+# checked
+btrfs_ioctl_balance_args {
+	flags	int64
+	state	int64
+	data	btrfs_balance_args
+	meta	btrfs_balance_args
+	sys	btrfs_balance_args
+	stat	btrfs_balance_progress
+	unused	array[const[0, int64], 72]
+}
+
+# checked
+btrfs_balance_args {
+	profiles	int64
+	anon_union_1	btrfs_balance_args_u1
+	devid		int64
+	pstart		int64
+	pend		int64
+	vstart		int64
+	vend		int64
+	target		int64
+	flags		int64
+	anon_union_2	btrfs_balance_args_u2
+	stripes_min	int32
+	stripes_max	int32
+	unused		array[const[0, int64], 6]
+}
+
+# checked
+btrfs_balance_args_u1 [
+	usage		int64
+	anon_struct_1	btrfs_balance_args_u1_s1
+]
+
+# checked
+btrfs_balance_args_u1_s1 {
+	usage_min	int32
+	usage_max	int32
+}
+
+# checked
+btrfs_balance_args_u2 [
+	limit		int64
+	anon_struct_1	btrfs_balance_args_u2_s1
+]
+
+# checked
+btrfs_balance_args_u2_s1 {
+	limit_min	int32
+	limit_max	int32
+}
+
+# checked
+btrfs_balance_progress {
+	expected	int64
+	considered	int64
+	completed	int64
+}
+
+# rtransid, rtime is out
+# checked
+btrfs_ioctl_received_subvol_args {
+	uuid		array[int8, 37]
+	stransid	int64
+	rtransid	int64
+	stime		btrfs_ioctl_timespec
+	rtime		btrfs_ioctl_timespec
+	flags		int64
+	reserved	array[int64, 16]
+}
+
+# checked
+btrfs_ioctl_timespec {
+	sec	int64
+	nsec	int32
+}
+
+# checked
+# btrfs_ioctl_timespec is similar to btrfs_ioctl_timespec_32
+# rtransid, rtime are out
+#btrfs_ioctl_received_subvol_args_32 {
+#    uuid         array[int8, 16]
+#    stransid     int64
+#    rtransid     int64
+#    stime        btrfs_ioctl_timespec
+#    rtime        btrfs_ioctl_timespec
+#    flags        int64
+#    reserved     array[int64, 16]
+#}
+
+# checked
+# Also used in place of btrfs_ioctl_send_args_32
+btrfs_ioctl_send_args {
+	send_fd			int64
+	clone_sources_count	len[clone_sources, int64]
+	clone_sources		ptr[in, array[int64]]
+	parent_root		int64
+	flags			int64
+	reserved		array[int64, 4]
+}
+
+# checked
+# 128 - 2 - 5
+btrfs_ioctl_get_dev_stats {
+	devid		int64
+	nr_items	int64
+	flags		int64
+	values		array[int64, 5]
+	unused		array[int64, 121]
+}
+
+# checked
+btrfs_ioctl_quota_ctl_args {
+	cmd	flags[quota_ctl_args_cmds, int64]
+	status	int64
+}
+
+# checked
+btrfs_ioctl_qgroup_assign_args {
+	assign	int64
+	src	int64
+	dst	int64
+}
+
+# checked
+btrfs_ioctl_qgroup_create_args {
+	create		int64
+	qgroupid	int64
+}
+
+# checked
+btrfs_ioctl_qgroup_limit_args {
+	qgroupid	int64
+	lim		btrfs_qgroup_limit
+}
+
+# checked
+btrfs_ioctl_quota_rescan_args {
+	flags		int64
+	progress	int64
+	reserved	array[int64, 6]
+}
+
+# checked
+# result is out
+btrfs_ioctl_dev_replace_args {
+	cmd	int64
+	result	int64
+	params	btrfs_ioctl_dev_union
+	spare	array[const[0, int64], 64]
+}
+
+# checked
+btrfs_ioctl_dev_union [
+	start	btrfs_ioctl_dev_replace_start_params
+	status	btrfs_ioctl_dev_replace_status_params
+]
+
+# checked
+btrfs_ioctl_dev_replace_start_params {
+	srcdevid			int64
+	cont_reading_from_srcdev_mode	int64
+	srcdev_name			array[int8, 1025]
+	tgtdev_name			array[int8, 1025]
+}
+
+# checked
+#TODO: Most of the attrs below are out
+btrfs_ioctl_dev_replace_status_params {
+	replace_state			int64
+	progress_1000			int64
+	time_started			int64
+	time_stopped			int64
+	num_write_errors		int64
+	num_uncorrectable_read_errors	int64
+}
+
+# checked
+btrfs_ioctl_feature_flags {
+	compat_flags	int64
+	compat_ro_flags	int64
+	incompat_flags	int64
+}
+
+# checked
+btrfs_ioctl_get_subvol_info_args {
+	treeid		int64
+	name		array[int8, 256]
+	parent_id	int64
+	dirid		int64
+	generation	int64
+	flags		int64
+	uuid		array[int8, 16]
+	parent_uuid	array[int8, 16]
+	received_uuid	array[int8, 16]
+	ctransid	int64
+	otransid	int64
+	stransid	int64
+	rtransid	int64
+	ctime		btrfs_ioctl_timespec
+	otime		btrfs_ioctl_timespec
+	stime		btrfs_ioctl_timespec
+	rtime		btrfs_ioctl_timespec
+	reserved	array[int64, 8]
+}
+
+# checked
+# rootref, num_items, is out
+btrfs_ioctl_get_subvol_rootref_args {
+	min_treeid	int64
+	rootrefs	array[rootref, 255]
+	num_items	int8
+	align		array[const[0, int64], 7]
+}
+
+rootref {
+	treeid	int64
+	dirid	int64
+}
+
+# checked
+btrfs_ioctl_ino_lookup_user_args {
+	dirid	int64
+	treeid	int64
+	name	array[int8, 256]
+	path	array[int8, 3824]
+}
+
+balance_ctl_options = BTRFS_BALANCE_CTL_PAUSE, BTRFS_BALANCE_CTL_CANCEL
+quota_ctl_args_cmds = BTRFS_QUOTA_CTL_ENABLE, BTRFS_QUOTA_CTL_DISABLE
+
