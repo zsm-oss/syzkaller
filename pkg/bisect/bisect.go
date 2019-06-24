@@ -112,7 +112,9 @@ func Run(cfg *Config) ([]*vcs.Commit, *report.Report, error) {
 		} else {
 			env.log("the crash already happened on the oldest tested release")
 		}
-		env.log("crash: %v\n%s", rep.Title, rep.Report)
+		if rep != nil {
+			env.log("crash: %v\n%s", rep.Title, rep.Report)
+		}
 		return nil, rep, nil
 	}
 	what := "bad"
