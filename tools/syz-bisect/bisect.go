@@ -98,6 +98,7 @@ func main() {
 		},
 		Manager: *mgrcfg,
 	}
+	fmt.Println("DEBUG: done loading configuration")
 	loadString("syzkaller.commit", &cfg.Syzkaller.Commit)
 	loadString("kernel.commit", &cfg.Kernel.Commit)
 	loadFile("kernel.config", &cfg.Kernel.Config)

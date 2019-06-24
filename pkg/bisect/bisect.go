@@ -76,6 +76,7 @@ func Run(cfg *Config) ([]*vcs.Commit, *report.Report, error) {
 	if err := checkConfig(cfg); err != nil {
 		return nil, nil, err
 	}
+	fmt.Println("DEBUG: passed configuration checks")
 	cfg.Manager.Cover = false // it's not supported somewhere back in time
 	repo, err := vcs.NewRepo(cfg.Manager.TargetOS, cfg.Manager.Type, cfg.Manager.KernelSrc)
 	if err != nil {
@@ -90,12 +91,14 @@ func Run(cfg *Config) ([]*vcs.Commit, *report.Report, error) {
 		repo:     repo,
 		bisecter: bisecter,
 	}
+	fmt.Println("DEBUG: Creating env instance")
 	if cfg.Fix {
 		env.log("bisecting fixing commit since %v", cfg.Kernel.Commit)
 	} else {
 		env.log("bisecting cause commit starting from %v", cfg.Kernel.Commit)
 	}
 	start := time.Now()
+	fmt.Println("DEBUG: Calling env.bisect()")
 	commits, rep, err := env.bisect()
 	env.log("revisions tested: %v, total time: %v (build: %v, test: %v)",
 		env.numTests, time.Since(start), env.buildTime, env.testTime)
@@ -135,12 +138,16 @@ func Run(cfg *Config) ([]*vcs.Commit, *report.Report, error) {
 func (env *env) bisect() ([]*vcs.Commit, *report.Report, error) {
 	cfg := env.cfg
 	var err error
+	fmt.Println("DEBUG: calling instance.NewEnv()")
 	if env.inst, err = instance.NewEnv(&cfg.Manager); err != nil {
 		return nil, nil, err
 	}
+
+	fmt.Println("DEBUG: checking out branch")
 	if env.head, err = env.repo.CheckoutBranch(cfg.Kernel.Repo, cfg.Kernel.Branch); err != nil {
 		return nil, nil, err
 	}
+	fmt.Println("DEBUG: cleaning")
 	if err := build.Clean(cfg.Manager.TargetOS, cfg.Manager.TargetVMArch,
 		cfg.Manager.Type, cfg.Manager.KernelSrc); err != nil {
 		return nil, nil, fmt.Errorf("kernel clean failed: %v", err)
@@ -149,15 +156,19 @@ func (env *env) bisect() ([]*vcs.Commit, *report.Report, error) {
 	if err := env.inst.BuildSyzkaller(cfg.Syzkaller.Repo, cfg.Syzkaller.Commit); err != nil {
 		return nil, nil, err
 	}
+
 	if _, err := env.repo.CheckoutCommit(cfg.Kernel.Repo, cfg.Kernel.Commit); err != nil {
 		return nil, nil, err
 	}
+
+	fmt.Println("DEBUG: Testing to see if the crash can be reproduced")
 	res, _, rep0, err := env.test()
 	if err != nil {
 		return nil, nil, err
 	} else if res != vcs.BisectBad {
 		return nil, nil, fmt.Errorf("the crash wasn't reproduced on the original commit")
 	}
+	fmt.Println("DEBUG: Finding the commit range")
 	bad, good, rep1, err := env.commitRange()
 	if err != nil {
 		return nil, nil, err
@@ -167,6 +178,7 @@ func (env *env) bisect() ([]*vcs.Commit, *report.Report, error) {
 	}
 	reports := make(map[string]*report.Report)
 	reports[cfg.Kernel.Commit] = rep0
+	fmt.Println("DEBUG: Kicking off bisection!")
 	commits, err := env.bisecter.Bisect(bad, good, cfg.Trace, func() (vcs.BisectResult, error) {
 		res, com, rep, err := env.test()
 		reports[com.Hash] = rep
@@ -242,10 +254,12 @@ func (env *env) commitRangeForBug() (string, string, *report.Report, error) {
 func (env *env) test() (vcs.BisectResult, *vcs.Commit, *report.Report, error) {
 	cfg := env.cfg
 	env.numTests++
+	fmt.Println("DEBUG: Checking out HEAD")
 	current, err := env.repo.HeadCommit()
 	if err != nil {
 		return 0, nil, nil, err
 	}
+	fmt.Println("DEBUG: Getting the env for commit")
 	bisectEnv, err := env.bisecter.EnvForCommit(current.Hash, cfg.Kernel.Config)
 	if err != nil {
 		return 0, nil, nil, err
@@ -257,10 +271,13 @@ func (env *env) test() (vcs.BisectResult, *vcs.Commit, *report.Report, error) {
 	}
 	env.log("testing commit %v with %v", current.Hash, compilerID)
 	buildStart := time.Now()
+	fmt.Println("DEBUG: clean kernel")
 	if err := build.Clean(cfg.Manager.TargetOS, cfg.Manager.TargetVMArch,
 		cfg.Manager.Type, cfg.Manager.KernelSrc); err != nil {
 		return 0, nil, nil, fmt.Errorf("kernel clean failed: %v", err)
 	}
+	fmt.Println("DEBUG: build kernel")
+	fmt.Println("DEBUG: cfg.Kernel.Userspace is set to " + cfg.Kernel.Userspace)
 	_, err = env.inst.BuildKernel(compiler, cfg.Kernel.Userspace,
 		cfg.Kernel.Cmdline, cfg.Kernel.Sysctl, bisectEnv.KernelConfig)
 	env.buildTime += time.Since(buildStart)
@@ -277,12 +294,14 @@ func (env *env) test() (vcs.BisectResult, *vcs.Commit, *report.Report, error) {
 		return vcs.BisectSkip, current, nil, nil
 	}
 	testStart := time.Now()
+	fmt.Println("DEBUG: Start Test()")
 	results, err := env.inst.Test(NumTests, cfg.Repro.Syz, cfg.Repro.Opts, cfg.Repro.C)
 	env.testTime += time.Since(testStart)
 	if err != nil {
 		env.log("failed: %v", err)
 		return vcs.BisectSkip, current, nil, nil
 	}
+	fmt.Println("DEBUG: Checking results")
 	bad, good, rep := env.processResults(current, results)
 	res := vcs.BisectSkip
 	if bad != 0 {

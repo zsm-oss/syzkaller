@@ -64,19 +64,26 @@ func (git *git) Poll(repo, branch string) (*Commit, error) {
 }
 
 func (git *git) CheckoutBranch(repo, branch string) (*Commit, error) {
-	git.reset()
-	if _, err := git.git("reset", "--hard"); err != nil {
-		if err := git.initRepo(err); err != nil {
+	/*
+		fmt.Println("DEBUG: CheckoutBranch: " + branch)
+		fmt.Println("DEBUG: resetting")
+		git.reset()
+		if _, err := git.git("reset", "--hard"); err != nil {
+			if err := git.initRepo(err); err != nil {
+				return nil, err
+			}
+		}
+		fmt.Println("DEBUG: fetching")
+		_, err := git.git("fetch", repo, branch)
+		if err != nil {
 			return nil, err
 		}
-	}
-	_, err := git.git("fetch", repo, branch)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := git.git("checkout", "FETCH_HEAD"); err != nil {
-		return nil, err
-	}
+		fmt.Println("DEBUG: checkout FETCH_HEAD")
+		if _, err := git.git("checkout", "FETCH_HEAD"); err != nil {
+			return nil, err
+		}
+	*/
+	fmt.Println("DEBUG: returning HEAD")
 	return git.HeadCommit()
 }
 

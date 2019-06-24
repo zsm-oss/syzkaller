@@ -25,9 +25,11 @@ type linux struct{}
 
 func (linux linux) build(targetArch, vmType, kernelDir, outputDir, compiler, userspaceDir,
 	cmdlineFile, sysctlFile string, config []byte) error {
+	fmt.Println("DEBUG: buildKernel")
 	if err := linux.buildKernel(targetArch, kernelDir, outputDir, compiler, config); err != nil {
 		return err
 	}
+	fmt.Println("DEBUG: createImage")
 	if err := linux.createImage(targetArch, vmType, kernelDir, outputDir, userspaceDir, cmdlineFile,
 		sysctlFile); err != nil {
 		return err
@@ -37,25 +39,32 @@ func (linux linux) build(targetArch, vmType, kernelDir, outputDir, compiler, use
 
 func (linux) buildKernel(targetArch, kernelDir, outputDir, compiler string, config []byte) error {
 	configFile := filepath.Join(kernelDir, ".config")
+	fmt.Println("DEBUG: writing configuration")
 	if err := osutil.WriteFile(configFile, config); err != nil {
 		return fmt.Errorf("failed to write config file: %v", err)
 	}
-	if err := osutil.SandboxChown(configFile); err != nil {
-		return err
-	}
+	/*
+		if err := osutil.SandboxChown(configFile); err != nil {
+			return err
+		}
+	*/
 	// One would expect olddefconfig here, but olddefconfig is not present in v3.6 and below.
 	// oldconfig is the same as olddefconfig if stdin is not set.
 	// Note: passing in compiler is important since 4.17 (at the very least it's noted in the config).
+	fmt.Println("DEBUG: oldconfig")
 	cmd := osutil.Command("make", "oldconfig", "CC="+compiler)
-	if err := osutil.Sandbox(cmd, true, true); err != nil {
-		return err
-	}
+	/*
+		if err := osutil.Sandbox(cmd, true, true); err != nil {
+			return err
+		}
+	*/
 	cmd.Dir = kernelDir
 	if _, err := osutil.Run(10*time.Minute, cmd); err != nil {
 		return err
 	}
 	// Write updated kernel config early, so that it's captured on build failures.
 	outputConfig := filepath.Join(outputDir, "kernel.config")
+	fmt.Println("DEBUG: copy config")
 	if err := osutil.CopyFile(configFile, outputConfig); err != nil {
 		return err
 	}
@@ -69,12 +78,16 @@ func (linux) buildKernel(targetArch, kernelDir, outputDir, compiler string, conf
 	case "ppc64le":
 		target = "zImage"
 	}
+	fmt.Println("DEBUG: build kernel")
 	cmd = osutil.Command("make", target, "-j", cpu, "CC="+compiler)
-
-	if err := osutil.Sandbox(cmd, true, true); err != nil {
-		return err
-	}
+	/*
+		if err := osutil.Sandbox(cmd, true, true); err != nil {
+			return err
+		}
+	*/
 	cmd.Dir = kernelDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if _, err := osutil.Run(time.Hour, cmd); err != nil {
 		return err
 	}
@@ -92,6 +105,7 @@ func (linux) createImage(targetArch, vmType, kernelDir, outputDir, userspaceDir,
 		return err
 	}
 	defer os.RemoveAll(tempDir)
+	fmt.Println("DEBUG: writing to create.sh")
 	scriptFile := filepath.Join(tempDir, "create.sh")
 	if err := osutil.WriteExecFile(scriptFile, []byte(createImageScript)); err != nil {
 		return fmt.Errorf("failed to write script file: %v", err)
@@ -113,18 +127,24 @@ func (linux) createImage(targetArch, vmType, kernelDir, outputDir, userspaceDir,
 		"SYZ_CMDLINE_FILE="+osutil.Abs(cmdlineFile),
 		"SYZ_SYSCTL_FILE="+osutil.Abs(sysctlFile),
 	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	fmt.Println("DEBUG: running create.sh")
 	if _, err = osutil.Run(time.Hour, cmd); err != nil {
 		return fmt.Errorf("image build failed: %v", err)
 	}
 	// Note: we use CopyFile instead of Rename because src and dst can be on different filesystems.
 	imageFile := filepath.Join(outputDir, "image")
+	fmt.Println("DEBUG: copy file to disk.raw")
 	if err := osutil.CopyFile(filepath.Join(tempDir, "disk.raw"), imageFile); err != nil {
 		return err
 	}
+	fmt.Println("DEBUG: copy to key file")
 	keyFile := filepath.Join(outputDir, "key")
 	if err := osutil.CopyFile(filepath.Join(tempDir, "key"), keyFile); err != nil {
 		return err
 	}
+	fmt.Println("DEBUG: chmod the keyfile")
 	if err := os.Chmod(keyFile, 0600); err != nil {
 		return err
 	}

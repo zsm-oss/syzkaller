@@ -178,6 +178,7 @@ func (env *Env) Test(numVMs int, reproSyz, reproOpts, reproC []byte) ([]error, e
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("DEBUG: Creating VM")
 	vmPool, err := vm.Create(env.cfg, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create VM pool: %v", err)
@@ -185,6 +186,8 @@ func (env *Env) Test(numVMs int, reproSyz, reproOpts, reproC []byte) ([]error, e
 	if n := vmPool.Count(); numVMs > n {
 		numVMs = n
 	}
+	fmt.Println("DEBUG: setting of VMs in a loop")
+
 	res := make(chan error, numVMs)
 	for i := 0; i < numVMs; i++ {
 		inst := &inst{
@@ -198,6 +201,9 @@ func (env *Env) Test(numVMs int, reproSyz, reproOpts, reproC []byte) ([]error, e
 		}
 		go func() { res <- inst.test() }()
 	}
+
+	fmt.Println("DEBUG: accumulating errors from VMs")
+
 	var errors []error
 	for i := 0; i < numVMs; i++ {
 		errors = append(errors, <-res)
@@ -218,13 +224,17 @@ type inst struct {
 
 func (inst *inst) test() error {
 	vmInst, err := inst.vmPool.Create(inst.vmIndex)
+	fmt.Println("DEBUG: done creating VMs")
 	if err != nil {
+		fmt.Println("booterror here 1")
 		testErr := &TestError{
 			Boot:  true,
 			Title: err.Error(),
 		}
 		if bootErr, ok := err.(vm.BootErrorer); ok {
 			testErr.Title, testErr.Output = bootErr.BootError()
+			fmt.Println("booterror here 2")
+			fmt.Println(string(testErr.Output))
 			rep := inst.reporter.Parse(testErr.Output)
 			if rep != nil && rep.Type == report.UnexpectedReboot {
 				// Avoid detecting any boot crash as "unexpected kernel reboot".
@@ -242,23 +252,30 @@ func (inst *inst) test() error {
 			}
 			if err := inst.reporter.Symbolize(rep); err != nil {
 				// TODO(dvyukov): send such errors to dashboard.
+				fmt.Println("booterror here 3")
 				log.Logf(0, "failed to symbolize report: %v", err)
 			}
 			testErr.Report = rep
 			testErr.Title = rep.Title
 		}
+		fmt.Println("booterror here 4")
 		return testErr
 	}
 	defer vmInst.Close()
 	inst.vm = vmInst
+	fmt.Println("DEBUG: testInstance()")
 	if err := inst.testInstance(); err != nil {
+		fmt.Println("booterror here 5")
 		return err
 	}
 	if len(inst.reproSyz) != 0 {
+		fmt.Println("DEBUG: testRepro()")
 		if err := inst.testRepro(); err != nil {
+			fmt.Println("booterror here 6")
 			return err
 		}
 	}
+	fmt.Println("boot success")
 	return nil
 }
 
@@ -319,10 +336,12 @@ func (inst *inst) testInstance() error {
 
 func (inst *inst) testRepro() error {
 	cfg := inst.cfg
+	fmt.Println("DEBUG: copying execprog")
 	execprogBin, err := inst.vm.Copy(cfg.SyzExecprogBin)
 	if err != nil {
 		return &TestError{Title: fmt.Sprintf("failed to copy test binary to VM: %v", err)}
 	}
+	fmt.Println("DEBUG: copying executor")
 	executorBin, err := inst.vm.Copy(cfg.SyzExecutorBin)
 	if err != nil {
 		return &TestError{Title: fmt.Sprintf("failed to copy test binary to VM: %v", err)}
@@ -335,6 +354,7 @@ func (inst *inst) testRepro() error {
 	if err != nil {
 		return &TestError{Title: fmt.Sprintf("failed to copy test binary to VM: %v", err)}
 	}
+	fmt.Println("DEBUG: parsing repro opts")
 	opts, err := csource.DeserializeOptions(inst.reproOpts)
 	if err != nil {
 		return err
@@ -349,23 +369,29 @@ func (inst *inst) testRepro() error {
 	if !opts.Fault {
 		opts.FaultCall = -1
 	}
+	fmt.Println("DEBUG: creating ExecprogCmd")
 	cmdSyz := ExecprogCmd(execprogBin, executorBin, cfg.TargetOS, cfg.TargetArch, opts.Sandbox,
 		true, true, true, cfg.Procs, opts.FaultCall, opts.FaultNth, vmProgFile)
+
+	fmt.Println("DEBUG: testProgram")
 	if err := inst.testProgram(cmdSyz, 7*time.Minute); err != nil {
 		return err
 	}
 	if len(inst.reproC) == 0 {
 		return nil
 	}
+	fmt.Println("DEBUG: GetTarget")
 	target, err := prog.GetTarget(cfg.TargetOS, cfg.TargetArch)
 	if err != nil {
 		return err
 	}
+	fmt.Println("DEBUG: BuildNoWarn")
 	bin, err := csource.BuildNoWarn(target, inst.reproC)
 	if err != nil {
 		return err
 	}
 	defer os.Remove(bin)
+	fmt.Println("DEBUG: copy binary")
 	vmBin, err := inst.vm.Copy(bin)
 	if err != nil {
 		return &TestError{Title: fmt.Sprintf("failed to copy test binary to VM: %v", err)}
@@ -376,10 +402,12 @@ func (inst *inst) testRepro() error {
 }
 
 func (inst *inst) testProgram(command string, testTime time.Duration) error {
+	fmt.Println("DEBUG: testProgram")
 	outc, errc, err := inst.vm.Run(testTime, nil, command)
 	if err != nil {
 		return fmt.Errorf("failed to run binary in VM: %v", err)
 	}
+	fmt.Println("DEBUG: MonitorExecution")
 	rep := inst.vm.MonitorExecution(outc, errc, inst.reporter,
 		vm.ExitTimeout|vm.ExitNormal|vm.ExitError)
 	if rep == nil {

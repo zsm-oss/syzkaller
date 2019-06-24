@@ -96,13 +96,16 @@ func (pool *Pool) Count() int {
 }
 
 func (pool *Pool) Create(index int) (*Instance, error) {
+	fmt.Printf("DEBUG: index=%d pool.Count=%d\n", index, pool.Count())
 	if index < 0 || index >= pool.Count() {
 		return nil, fmt.Errorf("invalid VM index %v (count %v)", index, pool.Count())
 	}
+	fmt.Println("DEBUG: ProcessTempDir")
 	workdir, err := osutil.ProcessTempDir(pool.workdir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create instance temp dir: %v", err)
 	}
+	fmt.Println("DEBUG: Creating VMs")
 	impl, err := pool.impl.Create(workdir, index)
 	if err != nil {
 		os.RemoveAll(workdir)
@@ -197,6 +200,7 @@ func (inst *Instance) MonitorExecution(outc <-chan []byte, errc <-chan error,
 				continue
 			}
 			lastPos := len(mon.output)
+			fmt.Println(string(mon.output))
 			mon.output = append(mon.output, out...)
 			if bytes.Contains(mon.output[lastPos:], executingProgram1) ||
 				bytes.Contains(mon.output[lastPos:], executingProgram2) {
