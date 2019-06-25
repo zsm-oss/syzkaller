@@ -215,6 +215,7 @@ func (env *env) commitRangeForFix() (string, string, *report.Report, error) {
 		return "", "", nil, err
 	}
 	if res != vcs.BisectGood {
+		fmt.Println("ok so this is where the change is happening")
 		return "", "", rep, nil
 	}
 	return env.head.Hash, env.cfg.Kernel.Commit, nil, nil
@@ -305,12 +306,15 @@ func (env *env) test() (vcs.BisectResult, *vcs.Commit, *report.Report, error) {
 	bad, good, rep := env.processResults(current, results)
 	res := vcs.BisectSkip
 	if bad != 0 {
+		fmt.Println("DEBUG: one")
 		res = vcs.BisectBad
 	} else if NumTests-good-bad > NumTests/3*2 {
 		// More than 2/3 of instances failed with infrastructure error,
 		// can't reliably tell that the commit is good.
+		fmt.Println("DEBUG: two")
 		res = vcs.BisectSkip
 	} else if good != 0 {
+		fmt.Println("DEBUG: three")
 		res = vcs.BisectGood
 	}
 	return res, current, rep, nil
