@@ -223,7 +223,14 @@ func (env *env) commitRangeForFix() (string, string, *report.Report, error) {
 		return "", "", rep, nil
 	}
 	if cfg.Kernel.Upstream {
-		// Narrow down range based on release tags
+		tags, err := env.bisecter.NextReleaseTags(cfg.Kernel.Commit)
+		if err != nil {
+			return "", "", nil, err
+		}
+		if len(tags) == 0 {
+			return env.head.Hash, env.cfg.Kernel.Commit, nil, nil
+		}
+		return env.narrowBisectionRange(tags, vcs.BisectBad, vcs.BisectGood)
 	}
 	return env.head.Hash, env.cfg.Kernel.Commit, nil, nil
 }
@@ -234,6 +241,14 @@ func (env *env) commitRangeForBug() (string, string, *report.Report, error) {
 	if err != nil {
 		return "", "", nil, err
 	}
+	if len(tags) == 0 {
+		return "", "", nil, fmt.Errorf("no release tags before this commit")
+	}
+	return env.narrowBisectionRange(tags, vcs.BisectGood, vcs.BisectBad)
+}
+
+func (env *env) narrowBisectionRange(tags []string, good, bad vcs.BisectResult) (string, string, *report.Report, error) {
+	cfg := env.cfg
 	if len(tags) == 0 {
 		return "", "", nil, fmt.Errorf("no release tags before this commit")
 	}
@@ -248,10 +263,10 @@ func (env *env) commitRangeForBug() (string, string, *report.Report, error) {
 		if err != nil {
 			return "", "", nil, err
 		}
-		if res == vcs.BisectGood {
+		if res == good {
 			return lastBad, tag, nil, nil
 		}
-		if res == vcs.BisectBad {
+		if res == bad {
 			lastBad = tag
 			lastRep = rep
 		}
