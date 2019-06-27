@@ -5,6 +5,7 @@ package vcs
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/mail"
 	"path/filepath"
@@ -28,6 +29,38 @@ func newLinux(dir string) *linux {
 	return &linux{
 		git: newGit(dir, ignoreCC),
 	}
+}
+
+func (ctx *linux) NextReleaseTags(commit string) ([]string, error) {
+	output, err := ctx.git.git("tag", "--contains", commit)
+	if err != nil {
+		return nil, err
+	}
+	tags, err := gitParseReleaseTags(output)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the first tag corresponds to `commit`, remove it from the list so that
+	// we do not test it again.
+	if len(tags) != 0 {
+		output, err := ctx.git.git("rev-parse", tags[0])
+		if err != nil {
+			return nil, err
+		}
+		if strings.HasPrefix(string(output), commit) {
+			tags = tags[1:]
+		}
+	}
+
+	if len(tags) > 1 {
+		for i := len(tags)/2 - 1; i >= 0; i-- {
+			j := len(tags) - 1 - i
+			tags[i], tags[j] = tags[j], tags[i]
+		}
+	}
+	fmt.Printf("NextReleaseTags: %v\n", tags)
+	return tags, nil
 }
 
 func (ctx *linux) PreviousReleaseTags(commit string) ([]string, error) {
