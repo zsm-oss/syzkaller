@@ -24,6 +24,8 @@ type Config struct {
 	KernelObj string `json:"kernel_obj"`
 	// Kernel source directory (if not set defaults to KernelObj).
 	KernelSrc string `json:"kernel_src,omitempty"`
+	// Upstream denotes whether or not KernelSrc corresponds to an upstream kernel directory(default: false)
+	Upstream bool `json:"upstream"`
 	// Arbitrary optional tag that is saved along with crash reports (e.g. branch/commit).
 	Tag string `json:"tag,omitempty"`
 	// Location of the disk image file.

@@ -92,6 +92,7 @@ func main() {
 			Userspace: mycfg.Userspace,
 			Sysctl:    mycfg.Sysctl,
 			Cmdline:   mycfg.Cmdline,
+			Upstream:  mgrcfg.Upstream,
 		},
 		Syzkaller: bisect.SyzkallerConfig{
 			Repo: mycfg.SyzkallerRepo,

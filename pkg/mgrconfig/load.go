@@ -62,6 +62,7 @@ func defaultValues() *Config {
 		Sandbox:   "none",
 		RPC:       ":0",
 		Procs:     1,
+		Upstream:  false,
 	}
 }
 

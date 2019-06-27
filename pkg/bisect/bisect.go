@@ -36,6 +36,7 @@ type KernelConfig struct {
 	Sysctl    string
 	Config    []byte
 	Userspace string
+	Upstream  bool
 }
 
 type SyzkallerConfig struct {
@@ -209,6 +210,7 @@ func (env *env) commitRange() (string, string, *report.Report, error) {
 
 func (env *env) commitRangeForFix() (string, string, *report.Report, error) {
 	env.log("testing current HEAD %v", env.head.Hash)
+	cfg := env.cfg
 	if _, err := env.repo.SwitchCommit(env.head.Hash); err != nil {
 		return "", "", nil, err
 	}
@@ -219,6 +221,9 @@ func (env *env) commitRangeForFix() (string, string, *report.Report, error) {
 	if res != vcs.BisectGood {
 		fmt.Println("ok so this is where the change is happening")
 		return "", "", rep, nil
+	}
+	if cfg.Kernel.Upstream {
+		// Narrow down range based on release tags
 	}
 	return env.head.Hash, env.cfg.Kernel.Commit, nil, nil
 }
