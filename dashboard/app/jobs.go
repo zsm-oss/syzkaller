@@ -507,6 +507,12 @@ func doneJob(c context.Context, req *dashapi.JobDoneReq) error {
 			} else {
 				bug.BisectFix = result
 			}
+			// If there is a crashlog, no error on BisectFix, no resulting commits
+			// then crash still occurs on ToT. So update the bug's crash related information.
+			if err := updateCrashOnBisectFix(c, bug, job, req, now); err != nil {
+				return err
+			}
+			// Update the bug
 			if _, err := db.Put(c, bugKey, bug); err != nil {
 				return fmt.Errorf("failed to put bug: %v", err)
 			}
@@ -534,6 +540,67 @@ func doneJob(c context.Context, req *dashapi.JobDoneReq) error {
 		return nil
 	}
 	return db.RunInTransaction(c, tx, &db.TransactionOptions{XG: true, Attempts: 30})
+}
+
+func updateCrashOnBisectFix(c context.Context, bug *Bug, job *Job, req *dashapi.JobDoneReq, now time.Time) error {
+	if job.Type != JobBisectFix || req.Error != nil || len(req.Commits) != 0 || len(req.CrashLog) == 0 {
+		return nil
+	}
+
+	jobKey, err := jobID2Key(c, req.ID)
+	if err != nil {
+		return err
+	}
+	bugKey := jobKey.Parent()
+
+	crash := new(Crash)
+	crashKey := db.NewKey(c, "Crash", "", job.CrashID, bugKey)
+	if err := db.Get(c, crashKey, crash); err != nil {
+		return fmt.Errorf("failed to get crash: %v", err)
+	}
+	crash.Time = now
+
+	// Update with information related to latest crash
+	ns := job.Namespace
+	if crash.Log, err = putText(c, ns, textCrashLog, req.CrashLog, false); err != nil {
+		return err
+	}
+	if crash.Report, err = putText(c, ns, textCrashReport, req.CrashReport, false); err != nil {
+		return err
+	}
+
+	if req.Build.ID == "" {
+		return fmt.Errorf("request does not have Build.ID set")
+	}
+	build := new(Build)
+	if err := db.Get(c, buildKey(c, job.Namespace, req.Build.ID), build); err != nil {
+		if err == db.ErrNoSuchEntity {
+			return fmt.Errorf("unknown build %v/%v", job.Namespace, req.Build.ID)
+		}
+		return fmt.Errorf("failed to get build %v/%v: %v", job.Namespace, req.Build.ID, err)
+	}
+
+	dCrash := new(dashapi.Crash)
+	dCrash.Title = bug.Title
+	dCrash.Maintainers = crash.Maintainers
+	dCrash.Corrupted = false
+	dCrash.ReproOpts = crash.ReproOpts
+	dCrash.BuildID = req.Build.ID
+	val, _, err := getText(c, textReproSyz, crash.ReproSyz)
+	if err != nil {
+		return fmt.Errorf("failed to fetch syz repro used for bisection: %v", err)
+	}
+	dCrash.ReproSyz = val
+
+	reproLevel, save, err := updateReproSaveCrash(c, dCrash, bug, bugKey, build, now)
+	if err != nil {
+		return err
+	}
+
+	updateBugWithCrash(c, dCrash, bug, build, now, reproLevel, save)
+	bug.BisectFix = BisectNot
+
+	return nil
 }
 
 func pollCompletedJobs(c context.Context, typ string) ([]*dashapi.BugReport, error) {

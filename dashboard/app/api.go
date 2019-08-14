@@ -719,49 +719,17 @@ func reportCrash(c context.Context, build *Build, req *dashapi.Crash) (*Bug, err
 			return nil, err
 		}
 	}
-
 	now := timeNow(c)
-	reproLevel := ReproLevelNone
-	if len(req.ReproC) != 0 {
-		reproLevel = ReproLevelC
-	} else if len(req.ReproSyz) != 0 {
-		reproLevel = ReproLevelSyz
+	reproLevel, save, err := updateReproSaveCrash(c, req, bug, bugKey, build, now)
+	if err != nil {
+		return nil, err
 	}
-	save := reproLevel != ReproLevelNone ||
-		bug.NumCrashes < maxCrashes ||
-		now.Sub(bug.LastSavedCrash) > time.Hour ||
-		bug.NumCrashes%20 == 0
-	if save {
-		if err := saveCrash(c, ns, req, bugKey, build); err != nil {
-			return nil, err
-		}
-	} else {
-		log.Infof(c, "not saving crash for %q", bug.Title)
-	}
-
 	tx := func(c context.Context) error {
 		bug = new(Bug)
 		if err := db.Get(c, bugKey, bug); err != nil {
 			return fmt.Errorf("failed to get bug: %v", err)
 		}
-		bug.NumCrashes++
-		bug.LastTime = now
-		if save {
-			bug.LastSavedCrash = now
-		}
-		if reproLevel != ReproLevelNone {
-			bug.NumRepro++
-			bug.LastReproTime = now
-		}
-		if bug.ReproLevel < reproLevel {
-			bug.ReproLevel = reproLevel
-		}
-		if len(req.Report) != 0 {
-			bug.HasReport = true
-		}
-		if !stringInList(bug.HappenedOn, build.Manager) {
-			bug.HappenedOn = append(bug.HappenedOn, build.Manager)
-		}
+		updateBugWithCrash(c, req, bug, build, now, reproLevel, save)
 		if _, err = db.Put(c, bugKey, bug); err != nil {
 			return fmt.Errorf("failed to put bug: %v", err)
 		}
@@ -776,7 +744,50 @@ func reportCrash(c context.Context, build *Build, req *dashapi.Crash) (*Bug, err
 	return bug, nil
 }
 
-func saveCrash(c context.Context, ns string, req *dashapi.Crash, bugKey *db.Key, build *Build) error {
+func updateReproSaveCrash(c context.Context, req *dashapi.Crash, bug *Bug, bugKey *db.Key, build *Build, now time.Time) (
+	dashapi.ReproLevel, bool, error) {
+	reproLevel := ReproLevelNone
+	if len(req.ReproC) != 0 {
+		reproLevel = ReproLevelC
+	} else if len(req.ReproSyz) != 0 {
+		reproLevel = ReproLevelSyz
+	}
+	save := reproLevel != ReproLevelNone ||
+		bug.NumCrashes < maxCrashes ||
+		now.Sub(bug.LastSavedCrash) > time.Hour ||
+		bug.NumCrashes%20 == 0
+	if save {
+		if err := saveCrash(c, build.Namespace, req, bugKey, build, now); err != nil {
+			return ReproLevelNone, false, err
+		}
+	} else {
+		log.Infof(c, "not saving crash for %q", bug.Title)
+	}
+	return reproLevel, save, nil
+}
+
+func updateBugWithCrash(c context.Context, req *dashapi.Crash, bug *Bug, build *Build, now time.Time, reproLevel dashapi.ReproLevel, save bool) {
+	bug.NumCrashes++
+	bug.LastTime = now
+	if save {
+		bug.LastSavedCrash = now
+	}
+	if reproLevel != ReproLevelNone {
+		bug.NumRepro++
+		bug.LastReproTime = now
+	}
+	if bug.ReproLevel < reproLevel {
+		bug.ReproLevel = reproLevel
+	}
+	if len(req.Report) != 0 {
+		bug.HasReport = true
+	}
+	if !stringInList(bug.HappenedOn, build.Manager) {
+		bug.HappenedOn = append(bug.HappenedOn, build.Manager)
+	}
+}
+
+func saveCrash(c context.Context, ns string, req *dashapi.Crash, bugKey *db.Key, build *Build, now time.Time) error {
 	// Reporting priority of this crash.
 	prio := int64(kernelRepoInfo(build).ReportingPriority) * 1e6
 	if len(req.ReproC) != 0 {
@@ -790,7 +801,7 @@ func saveCrash(c context.Context, ns string, req *dashapi.Crash, bugKey *db.Key,
 	crash := &Crash{
 		Manager:     build.Manager,
 		BuildID:     req.BuildID,
-		Time:        timeNow(c),
+		Time:        now,
 		Maintainers: req.Maintainers,
 		ReproOpts:   req.ReproOpts,
 		ReportLen:   prio,

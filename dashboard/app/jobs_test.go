@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/syzkaller/dashboard/dashapi"
 	"github.com/google/syzkaller/pkg/email"
+	db "google.golang.org/appengine/datastore"
 )
 
 func TestJob(t *testing.T) {
@@ -397,6 +398,84 @@ func TestBisectFixJob(t *testing.T) {
 	done = &dashapi.JobDoneReq{
 		ID:    resp.ID,
 		Error: []byte("testBisectFixJob:JobBisectFix"),
+	}
+	c.client2.expectOK(c.client2.JobDone(done))
+}
+
+// Test that JobBisectFix jobs are re-tried if crash occurs on ToT
+func TestBisectFixRetry(t *testing.T) {
+	c := NewCtx(t)
+	defer c.Close()
+
+	// Upload a crash report
+	build := testBuild(1)
+	c.client2.UploadBuild(build)
+	crash := testCrashWithRepro(build, 1)
+	c.client2.ReportCrash(crash)
+	c.client2.pollEmailBug()
+
+	// Receive the JobBisectCause
+	resp := c.client2.pollJobs(build.Manager)
+	c.client2.expectNE(resp.ID, "")
+	c.client2.expectEQ(resp.Type, dashapi.JobBisectCause)
+	done := &dashapi.JobDoneReq{
+		ID:    resp.ID,
+		Error: []byte("testBisectFixRetry:JobBisectCause"),
+	}
+	c.client2.expectOK(c.client2.JobDone(done))
+
+	// Advance time by 30 days and read out any notification emails
+	{
+		c.advanceTime(30 * 24 * time.Hour)
+		msg := c.client2.pollEmailBug()
+		c.expectEQ(msg.Subject, "title1")
+		c.expectTrue(strings.Contains(msg.Body, "Sending this report upstream."))
+
+		msg = c.client2.pollEmailBug()
+		c.expectEQ(msg.Subject, "title1")
+		c.expectTrue(strings.Contains(msg.Body, "syzbot found the following crash"))
+	}
+
+	// Ensure that there is only 1 crash
+	var bugs []*Bug
+	keys, _ := db.NewQuery("Bug").GetAll(c.ctx, &bugs)
+	url := fmt.Sprintf("/bug?id=%v", keys[0].StringID())
+	content, err := c.httpRequest("GET", url, "", AccessAdmin)
+	c.expectEQ(err, nil)
+	c.expectTrue(strings.Contains(string(content), "All crashes (1)"))
+
+	// Ensure that we get a JobBisectFix. We send back a crashlog, no error, no commits
+	resp = c.client2.pollJobs(build.Manager)
+	c.client2.expectNE(resp.ID, "")
+	c.client2.expectEQ(resp.Type, dashapi.JobBisectFix)
+	done = &dashapi.JobDoneReq{
+		Build: dashapi.Build{
+			ID: "build1",
+		},
+		ID:          resp.ID,
+		CrashLog:    []byte("this is a crashlog"),
+		CrashReport: []byte("this is a crashreport"),
+	}
+	c.client2.expectOK(c.client2.JobDone(done))
+
+	// Ensure that the new crash information is visible
+	content, err = c.httpRequest("GET", url, "", AccessAdmin)
+	c.expectEQ(err, nil)
+	c.expectTrue(strings.Contains(string(content), "All crashes (2)"))
+	fmt.Println(string(content))
+
+	// Advance time by 30 days. No notification emails
+	{
+		c.advanceTime(30 * 24 * time.Hour)
+	}
+
+	// Ensure that we get a JobBisectFix retry
+	resp = c.client2.pollJobs(build.Manager)
+	c.client2.expectNE(resp.ID, "")
+	c.client2.expectEQ(resp.Type, dashapi.JobBisectFix)
+	done = &dashapi.JobDoneReq{
+		ID:    resp.ID,
+		Error: []byte("testBisectFixRetry:JobBisectFix"),
 	}
 	c.client2.expectOK(c.client2.JobDone(done))
 }
