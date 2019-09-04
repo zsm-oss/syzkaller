@@ -254,6 +254,7 @@ func findBugsForBisection(c context.Context, managers map[string]bool, reproLeve
 		query = query.Filter("LastTime>", time.Time{}).
 			Filter("ReproLevel=", reproLevel).
 			Filter("BisectFix=", BisectNot).
+			Filter("Status=", BugStatusOpen).
 			Order("LastTime")
 	}
 	// We only need 1 job, but we skip some because the query is not precise.
