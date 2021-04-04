@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -27,14 +28,21 @@ func init() {
 	vmimpl.Register("isolated", ctor, false)
 }
 
+type XenConfig struct {
+	Xl          string   `json:"xl"`
+	DomainNames []string `json:"domain_names"`
+	DomainCfgs  []string `json:"domain_cfgs"`
+}
+
 type Config struct {
-	Host          string   `json:"host"`           // host ip addr
-	Targets       []string `json:"targets"`        // target machines: (hostname|ip)(:port)?
-	TargetDir     string   `json:"target_dir"`     // directory to copy/run on target
-	TargetReboot  bool     `json:"target_reboot"`  // reboot target on repair
-	USBDevNums    []string `json:"usb_device_num"` // /sys/bus/usb/devices/
-	StartupScript string   `json:"startup_script"` // script to execute after each startup
-	Pstore        bool     `json:"pstore"`         // use crashlogs from pstore
+	Host          string     `json:"host"`           // host ip addr
+	Targets       []string   `json:"targets"`        // target machines: (hostname|ip)(:port)?
+	TargetDir     string     `json:"target_dir"`     // directory to copy/run on target
+	TargetReboot  bool       `json:"target_reboot"`  // reboot target on repair
+	USBDevNums    []string   `json:"usb_device_num"` // /sys/bus/usb/devices/
+	StartupScript string     `json:"startup_script"` // script to execute after each startup
+	Pstore        bool       `json:"pstore"`         // use crashlogs from pstore
+	XenConfig     *XenConfig `json:"xen_config"`     // xen specific config
 }
 
 type Pool struct {
@@ -53,6 +61,7 @@ type instance struct {
 	sshUser     string
 	sshKey      string
 	forwardPort int
+	consoleCmd  *exec.Cmd
 }
 
 func ctor(env *vmimpl.Env) (vmimpl.Pool, error) {
@@ -74,6 +83,14 @@ func ctor(env *vmimpl.Env) (vmimpl.Pool, error) {
 			return nil, fmt.Errorf("bad target %q: %v", target, err)
 		}
 	}
+	if cfg.XenConfig != nil {
+		if cfg.XenConfig.Xl == "" {
+			cfg.XenConfig.Xl = "/usr/sbin/xl"
+		}
+		if _, err := exec.LookPath(cfg.XenConfig.Xl); err != nil {
+			return nil, err
+		}
+	}
 	if len(cfg.USBDevNums) > 0 {
 		if len(cfg.USBDevNums) != len(cfg.Targets) {
 			return nil, fmt.Errorf("the number of Targets and the number of USBDevNums should be same")
@@ -84,6 +101,10 @@ func ctor(env *vmimpl.Env) (vmimpl.Pool, error) {
 		cfg.Targets = cfg.Targets[:1]
 		if len(cfg.USBDevNums) > 1 {
 			cfg.USBDevNums = cfg.USBDevNums[:1]
+		}
+		if cfg.XenConfig != nil {
+			cfg.XenConfig.DomainCfgs = cfg.XenConfig.DomainCfgs[:1]
+			cfg.XenConfig.DomainNames = cfg.XenConfig.DomainNames[:1]
 		}
 	}
 	pool := &Pool{
@@ -255,6 +276,11 @@ func escapeDoubleQuotes(inp string) string {
 }
 
 func (inst *instance) repair() error {
+	if inst.cfg.XenConfig != nil {
+		if err := inst.bootXenVM(); err != nil {
+			return err
+		}
+	}
 	log.Logf(2, "isolated: trying to ssh")
 	if err := inst.waitForSSH(30 * time.Minute); err != nil {
 		log.Logf(2, "isolated: ssh failed")
@@ -296,6 +322,20 @@ func (inst *instance) repair() error {
 	return nil
 }
 
+func (inst *instance) bootXenVM() error {
+	idx := inst.index
+	cmd := osutil.Command("xl", "create", inst.cfg.XenConfig.DomainCfgs[idx])
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to boot xen vm: %v", err)
+	}
+	cmd = osutil.Command("xl", "console", inst.cfg.XenConfig.DomainNames[idx])
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to connect xen console: %v", err)
+	}
+	inst.consoleCmd = cmd
+	return nil
+}
+
 func (inst *instance) waitForSSH(timeout time.Duration) error {
 	return vmimpl.WaitForSSH(inst.debug, timeout, inst.targetAddr, inst.sshKey, inst.sshUser,
 		inst.os, inst.targetPort, nil)
@@ -321,6 +361,18 @@ func (inst *instance) waitForReboot(timeout int) error {
 
 func (inst *instance) Close() {
 	close(inst.closed)
+	if inst.cfg.XenConfig != nil {
+		// Close the console process.
+		if inst.consoleCmd != nil {
+			inst.consoleCmd.Process.Kill()
+			inst.consoleCmd.Wait()
+			inst.consoleCmd = nil
+		}
+		// Shutdown this instnace of the Xen VM.
+		idx := inst.index
+		cmd := osutil.Command("xl", "destroy", inst.cfg.XenConfig.DomainNames[idx])
+		cmd.Run()
+	}
 }
 
 func (inst *instance) Copy(hostSrc string) (string, error) {
