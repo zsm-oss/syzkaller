@@ -22,7 +22,39 @@ var (
 	flagConfig = flag.String("config", "", "manager configuration file (manager.cfg)")
 	flagCount  = flag.Int("count", 0, "number of VMs to use (overrides config count param)")
 	flagDebug  = flag.Bool("debug", false, "print debug output")
+	flagTitle  = flag.Bool("title", false, "turn on manual checking for crash title")
 )
+
+var seenCrashTitles = make(map[string]bool)
+
+func confirm(crashTitle string) (bool, error) {
+	for {
+		prompt := fmt.Sprintf("program crashed with new title %v; keep crashes with this title?", crashTitle)
+		fmt.Printf("%s [yes/no]: ", prompt)
+		var resp string
+		if _, err := fmt.Scanln(&resp); err != nil {
+			return false, fmt.Errorf("could not read user response")
+		}
+		if resp == "yes" {
+			return true, nil
+		} else if resp == "no" {
+			return false, nil
+		}
+	}
+}
+
+func checkTitle(crashTitle string) (bool, error) {
+	if resp, ok := seenCrashTitles[crashTitle]; ok {
+		return resp, nil
+	}
+
+	wantTitle, err := confirm(crashTitle)
+	if err != nil {
+		return false, err
+	}
+	seenCrashTitles[crashTitle] = wantTitle
+	return wantTitle, nil
+}
 
 func main() {
 	os.Args = append(append([]string{}, os.Args[0], "-vv=10"), os.Args[1:]...)
@@ -60,7 +92,13 @@ func main() {
 	}
 	osutil.HandleInterrupts(vm.Shutdown)
 
-	res, stats, err := repro.Run(data, cfg, nil, reporter, vmPool, vmIndexes)
+	var checkTitleFn func(string) (bool, error)
+
+	if *flagTitle {
+		checkTitleFn = checkTitle
+	}
+
+	res, stats, err := repro.Run(data, cfg, nil, reporter, vmPool, vmIndexes, checkTitleFn)
 	if err != nil {
 		log.Logf(0, "reproduction failed: %v", err)
 	}

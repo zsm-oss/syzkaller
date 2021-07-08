@@ -54,6 +54,7 @@ type context struct {
 	stats        *Stats
 	report       *report.Report
 	timeouts     targets.Timeouts
+	checkTitle   func(string) (bool, error)
 }
 
 type instance struct {
@@ -64,7 +65,7 @@ type instance struct {
 }
 
 func Run(crashLog []byte, cfg *mgrconfig.Config, features *host.Features, reporter report.Reporter,
-	vmPool *vm.Pool, vmIndexes []int) (*Result, *Stats, error) {
+	vmPool *vm.Pool, vmIndexes []int, checkTitleFn func(string) (bool, error)) (*Result, *Stats, error) {
 	if len(vmIndexes) == 0 {
 		return nil, nil, fmt.Errorf("no VMs provided")
 	}
@@ -109,6 +110,7 @@ func Run(crashLog []byte, cfg *mgrconfig.Config, features *host.Features, report
 		startOpts:    createStartOptions(cfg, features, crashType),
 		stats:        new(Stats),
 		timeouts:     cfg.Timeouts,
+		checkTitle:   checkTitleFn,
 	}
 	ctx.reproLogf(0, "%v programs, %v VMs, timeouts %v", len(entries), len(vmIndexes), testTimeouts)
 	var wg sync.WaitGroup
@@ -314,6 +316,7 @@ func (ctx *context) extractProg(entries []*prog.LogEntry) (*Result, error) {
 	for i := len(indices) - 1; i >= 0; i-- {
 		lastEntries = append(lastEntries, entries[indices[i]])
 	}
+
 	for _, timeout := range ctx.testTimeouts {
 		// Execute each program separately to detect simple crashes caused by a single program.
 		// Programs are executed in reverse order, usually the last program is the guilty one.
@@ -683,6 +686,16 @@ func (ctx *context) testImpl(inst *vm.Instance, command string, duration time.Du
 	if ctx.crashType == report.MemoryLeak && rep.Type != report.MemoryLeak {
 		ctx.reproLogf(2, "not a leak crash: %v", rep.Title)
 		return false, nil
+	}
+	if ctx.checkTitle != nil {
+		wantTitle, err := ctx.checkTitle(rep.Title)
+		if err != nil {
+			return false, err
+		}
+		if !wantTitle {
+			ctx.reproLogf(2, "user blocked crashes with title %v", rep.Title)
+			return false, nil
+		}
 	}
 	ctx.report = rep
 	ctx.reproLogf(2, "program crashed: %v", rep.Title)
