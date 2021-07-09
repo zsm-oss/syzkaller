@@ -302,6 +302,10 @@ func (ctx *context) extractProg(entries []*prog.LogEntry) (*Result, error) {
 		ctx.stats.ExtractProgTime = time.Since(start)
 	}()
 
+	return ctx.extractProgStrategy(entries)
+}
+
+func (ctx *context) extractProgStrategy(entries []*prog.LogEntry) (*Result, error) {
 	// Extract last program on every proc.
 	procs := make(map[int]int)
 	for i, ent := range entries {
