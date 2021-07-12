@@ -55,6 +55,7 @@ type context struct {
 	report       *report.Report
 	timeouts     targets.Timeouts
 	checkTitle   func(string) (bool, error)
+	strat        StratFunc
 }
 
 type instance struct {
@@ -64,8 +65,21 @@ type instance struct {
 	executorBin string
 }
 
+type StratFunc func(*context, []*prog.LogEntry) (*Result, error)
+
+const (
+	DefaultStrategy = "default"
+)
+
+var StratFuncs map[string]StratFunc
+
+func init() {
+	StratFuncs = make(map[string]StratFunc)
+	StratFuncs[DefaultStrategy] = (*context).extractProgStrategy
+}
+
 func Run(crashLog []byte, cfg *mgrconfig.Config, features *host.Features, reporter report.Reporter,
-	vmPool *vm.Pool, vmIndexes []int, checkTitleFn func(string) (bool, error)) (*Result, *Stats, error) {
+	vmPool *vm.Pool, vmIndexes []int, checkTitleFn func(string) (bool, error), strat string) (*Result, *Stats, error) {
 	if len(vmIndexes) == 0 {
 		return nil, nil, fmt.Errorf("no VMs provided")
 	}
@@ -99,6 +113,9 @@ func Run(crashLog []byte, cfg *mgrconfig.Config, features *host.Features, report
 	case crashType == report.Hang:
 		testTimeouts = testTimeouts[2:]
 	}
+	if _, ok := StratFuncs[strat]; !ok {
+		return nil, nil, fmt.Errorf("invalid strategy: %s", strat)
+	}
 	ctx := &context{
 		target:       cfg.SysTarget,
 		reporter:     reporter,
@@ -111,6 +128,7 @@ func Run(crashLog []byte, cfg *mgrconfig.Config, features *host.Features, report
 		stats:        new(Stats),
 		timeouts:     cfg.Timeouts,
 		checkTitle:   checkTitleFn,
+		strat:        StratFuncs[strat],
 	}
 	ctx.reproLogf(0, "%v programs, %v VMs, timeouts %v", len(entries), len(vmIndexes), testTimeouts)
 	var wg sync.WaitGroup
@@ -302,7 +320,7 @@ func (ctx *context) extractProg(entries []*prog.LogEntry) (*Result, error) {
 		ctx.stats.ExtractProgTime = time.Since(start)
 	}()
 
-	return ctx.extractProgStrategy(entries)
+	return ctx.strat(ctx, entries)
 }
 
 func (ctx *context) extractProgStrategy(entries []*prog.LogEntry) (*Result, error) {

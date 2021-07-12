@@ -344,7 +344,7 @@ func (mgr *Manager) vmLoop() {
 
 				go func() {
 					features := mgr.checkResult.Features
-					res, stats, err := repro.Run(crash.Output, mgr.cfg, features, mgr.reporter, mgr.vmPool, vmIndexes, nil)
+					res, stats, err := repro.Run(crash.Output, mgr.cfg, features, mgr.reporter, mgr.vmPool, vmIndexes, nil, "")
 					reproDone <- &ReproResult{
 						instances: vmIndexes,
 						report0:   crash.Report,

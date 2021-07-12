@@ -23,6 +23,7 @@ var (
 	flagCount  = flag.Int("count", 0, "number of VMs to use (overrides config count param)")
 	flagDebug  = flag.Bool("debug", false, "print debug output")
 	flagTitle  = flag.Bool("title", false, "turn on manual checking for crash title")
+	flagStrat  = flag.String("strat", repro.DefaultStrategy, "specify strategy to use for extracting program")
 )
 
 var seenCrashTitles = make(map[string]bool)
@@ -98,7 +99,7 @@ func main() {
 		checkTitleFn = checkTitle
 	}
 
-	res, stats, err := repro.Run(data, cfg, nil, reporter, vmPool, vmIndexes, checkTitleFn)
+	res, stats, err := repro.Run(data, cfg, nil, reporter, vmPool, vmIndexes, checkTitleFn, *flagStrat)
 	if err != nil {
 		log.Logf(0, "reproduction failed: %v", err)
 	}
