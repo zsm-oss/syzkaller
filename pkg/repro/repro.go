@@ -69,6 +69,8 @@ type StratFunc func(*context, []*prog.LogEntry) (*Result, error)
 
 const (
 	DefaultStrategy = "default"
+	LastNStrategy   = "lastN"
+	numLastPrograms = 1500
 )
 
 var StratFuncs map[string]StratFunc
@@ -76,6 +78,7 @@ var StratFuncs map[string]StratFunc
 func init() {
 	StratFuncs = make(map[string]StratFunc)
 	StratFuncs[DefaultStrategy] = (*context).extractProgStrategy
+	StratFuncs[LastNStrategy] = (*context).lastNPrograms
 }
 
 func Run(crashLog []byte, cfg *mgrconfig.Config, features *host.Features, reporter report.Reporter,
@@ -321,6 +324,50 @@ func (ctx *context) extractProg(entries []*prog.LogEntry) (*Result, error) {
 	}()
 
 	return ctx.strat(ctx, entries)
+}
+
+func (ctx *context) lastNPrograms(entries []*prog.LogEntry) (*Result, error) {
+	opts := ctx.startOpts
+	lastNEntries := entries
+	if len(entries) <= numLastPrograms {
+		ctx.reproLogf(3, "lastNPrograms: number of entries in log %v is smaller than N=%v, taking whole log instead",
+			len(entries), numLastPrograms)
+	} else {
+		lastNEntries = entries[len(entries)-numLastPrograms:]
+	}
+
+	// Concatenate programs into one.
+	prog := &prog.Prog{
+		Target: lastNEntries[0].P.Target,
+	}
+	for _, entry := range lastNEntries {
+		prog.Calls = append(prog.Calls, entry.P.Calls...)
+	}
+	for _, timeout := range ctx.testTimeouts {
+		ctx.reproLogf(3, "lastNPrograms: running last %v programs with timeout %v", len(lastNEntries), timeout)
+		duration := func(entries int) time.Duration {
+			return timeout + time.Duration(entries/4)*time.Second
+		}
+		dur := duration(len(lastNEntries))
+
+		// Execute the program without fault injection.
+		crashed, err := ctx.testProgs(lastNEntries, dur, opts)
+		if err != nil {
+			return nil, err
+		}
+		if crashed {
+			res := &Result{
+				Prog:     prog,
+				Duration: dur,
+				Opts:     opts,
+			}
+			ctx.reproLogf(3, "lastNPrograms: concatenation succeeded")
+			return res, nil
+		}
+	}
+
+	ctx.reproLogf(3, "lastNPrograms: last %v programs did not crash", numLastPrograms)
+	return nil, nil
 }
 
 func (ctx *context) extractProgStrategy(entries []*prog.LogEntry) (*Result, error) {
