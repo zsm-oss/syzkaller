@@ -202,7 +202,7 @@ func checkVhciInjection() string {
 	if err := osutil.IsAccessible("/dev/vhci"); err != nil {
 		return err.Error()
 	}
-	return ""
+	return "chromiumos: temporarily turning off vhci injection"
 }
 
 func checkDebugFS() string {
